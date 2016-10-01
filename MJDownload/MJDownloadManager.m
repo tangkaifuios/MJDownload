@@ -187,6 +187,7 @@ static NSString * const MJDowndloadManagerDefaultIdentifier = @"com.520it.www.do
  */
 - (void)resume
 {
+    self.suspend = NO;
     if (self.state == MJDownloadStateCompleted || self.state == MJDownloadStateResumed) return;
     
     [self.task resume];
@@ -499,7 +500,7 @@ static NSRecursiveLock *_lock;
     
     // 正在下载的
     NSArray *downloadingDownloadInfoArray = [self.downloadInfoArray filteredArrayUsingPredicate:[NSPredicate predicateWithFormat:@"state==%d", MJDownloadStateResumed]];
-    [info setupTask:self.session]; // 这是
+    [info setupTask:self.session]; // 初始化下载任务
     if (self.maxDownloadingCount && downloadingDownloadInfoArray.count == self.maxDownloadingCount) {
         // 等待下载
         [info willResume];
