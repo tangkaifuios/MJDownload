@@ -54,6 +54,9 @@ static NSString * const MJDowndloadManagerDefaultIdentifier = @"com.520it.www.do
 @property (strong, nonatomic) NSURLSessionDataTask *task;
 /** 文件流 */
 @property (strong, nonatomic) NSOutputStream *stream;
+
+@property (assign, nonatomic,getter = isSupend) BOOL suspend; // 是否是暂停
+
 @end
 
 @implementation MJDownloadInfo
@@ -208,7 +211,8 @@ static NSString * const MJDowndloadManagerDefaultIdentifier = @"com.520it.www.do
     if (self.state == MJDownloadStateCompleted || self.state == MJDownloadStateSuspened) return;
     
     if (self.state == MJDownloadStateResumed) { // 如果是正在下载
-        [self.task suspend];
+        [self.task cancel]; // 这里要调用取消， 而不是调用suspend, 因为一个链接可能会超时
+        self.suspend = YES;
         self.state = MJDownloadStateSuspened;
     } else { // 如果是等待下载
         self.state = MJDownloadStateNone;
@@ -262,7 +266,18 @@ static NSString * const MJDowndloadManagerDefaultIdentifier = @"com.520it.www.do
     if (self.state == MJDownloadStateCompleted || error) {
         // 设置状态
         self.state = error ? MJDownloadStateNone : MJDownloadStateCompleted;
+        
+        if(error == nil){
+            self.state = MJDownloadStateCompleted;
+        }else if(self.isSupend){
+            self.state = MJDownloadStateSuspened;
+
+        }else{
+            self.state = MJDownloadStateNone;
+
+        }
     }
+
 }
 @end
 /****************** MJDownloadInfo End ******************/
@@ -484,6 +499,7 @@ static NSRecursiveLock *_lock;
     
     // 正在下载的
     NSArray *downloadingDownloadInfoArray = [self.downloadInfoArray filteredArrayUsingPredicate:[NSPredicate predicateWithFormat:@"state==%d", MJDownloadStateResumed]];
+    [info setupTask:self.session]; // 这是
     if (self.maxDownloadingCount && downloadingDownloadInfoArray.count == self.maxDownloadingCount) {
         // 等待下载
         [info willResume];
@@ -533,7 +549,6 @@ static NSRecursiveLock *_lock;
 {
     // 获得下载信息
     MJDownloadInfo *info = [self downloadInfoForURL:task.taskDescription];
-    
     // 处理结束
     [info didCompleteWithError:error];
     
